@@ -1,7 +1,19 @@
 {
-  "name": "munax-mail",
-  "version": "1.0.0",
+  "name": "temp-email-api",
+  "version": "2.0.0",
+  "description": "Temp Email API with Dashboard",
+  "main": "api/emailnator.js",
+  "scripts": {
+    "start": "node api/emailnator.js",
+    "dev": "nodemon api/emailnator.js"
+  },
   "dependencies": {
-    "axios": "^1.6.0"
+    "axios": "^1.6.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
