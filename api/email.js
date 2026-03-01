@@ -1,487 +1,268 @@
-/**
- * ════════════════════════════════════════════════════════════════
- *        TEMP EMAIL API — PEAK LEVEL 🔥 (ULTIMATE EDITION)
- * ════════════════════════════════════════════════════════════════
- *
- *  Created by     : munax
- *  Special Thanks : Jerry — the realest 🙏
- *  
- *  Status  : PRODUCTION READY
- *  Speed   : LIGHTNING ⚡
- *  Stability: ROCK SOLID 🪨
- * ════════════════════════════════════════════════════════════════
- */
+import axios from “axios”;
 
-import axios from "axios";
-import * as cheerio from "cheerio";
+// ============================================================
+//   📧 EMAILNATOR API
+//   Made by munax
+//   Special thanks to jerry 💙
+// ============================================================
 
-// ==================== CONFIG ====================
-const CONFIG = {
-  BASE: "https://www.emailtick.com",
-  UA: "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Mobile Safari/537.36",
-  TIMEOUT: 15000,
-  MAX_RETRIES: 3,
-  RATE_LIMIT: 100, // ms between requests
-  CACHE_TTL: 30000, // 30 seconds cache for inbox
+const BRAND = {
+name: “munax”,
+thanks: “jerry”,
+version: “2.0.0”,
 };
 
-// ==================== CACHE ====================
-const cache = new Map();
+// ─── Session & Rate Limit Stores ────────────────────────────
+const sessionStore = new Map();   // email → { session, createdAt }
+const rateLimitStore = new Map(); // ip → { count, resetAt }
 
-// ==================== UTILS ====================
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-const now = () => new Date().toISOString();
+const SESSION_TTL = 600_000;      // 10 minutes in ms
+const RATE_LIMIT_MAX = 10;        // max requests per window
+const RATE_LIMIT_WINDOW = 60_000; // 1 minute window
 
-class APIError extends Error {
-  constructor(message, code = 500) {
-    super(message);
-    this.code = code;
-    this.name = "APIError";
-  }
+// ─── Axios Client ────────────────────────────────────────────
+const client = axios.create({
+baseURL: “https://www.emailnator.com”,
+withCredentials: true,
+headers: {
+“user-agent”: “Mozilla/5.0”,
+accept: “application/json, text/plain, */*”,
+},
+});
+
+// ─── Helpers ─────────────────────────────────────────────────
+async function getSession() {
+const home = await client.get(”/”);
+const cookies = home.headers[“set-cookie”].join(”; “);
+const xsrf = decodeURIComponent(
+cookies.match(/XSRF-TOKEN=([^;]+)/)[1]
+);
+return { cookies, xsrf };
 }
 
-// ==================== COOKIE GOD ====================
-const cookieManager = {
-  normalize: (sc) => {
-    if (!sc) return [];
-    const arr = Array.isArray(sc) ? sc : [sc];
-    return arr.map(v => String(v).split(";")[0]).filter(Boolean);
-  },
-
-  merge: (a = [], b = []) => {
-    const map = new Map();
-    [...a, ...b].forEach(c => {
-      const [key, ...val] = c.split("=");
-      map.set(key.trim(), `${key.trim()}=${val.join("=")}`);
-    });
-    return [...map.values()];
-  },
-
-  toHeader: (c) => c.length ? c.join("; ") : ""
+function authHeaders(session) {
+return {
+headers: {
+cookie: session.cookies,
+“x-xsrf-token”: session.xsrf,
+“x-requested-with”: “XMLHttpRequest”,
+“content-type”: “application/json”,
+},
 };
-
-// ==================== REQUEST ENGINE ====================
-async function request(method, url, opts = {}) {
-  const retries = opts.retries ?? CONFIG.MAX_RETRIES;
-  
-  for (let i = 0; i < retries; i++) {
-    try {
-      await sleep(CONFIG.RATE_LIMIT * i); // exponential backoff
-      
-      const response = await axios({
-        method,
-        url: url.startsWith("http") ? url : `${CONFIG.BASE}${url}`,
-        timeout: CONFIG.TIMEOUT,
-        validateStatus: () => true,
-        transformResponse: d => d,
-        data: opts.data,
-        headers: {
-          "user-agent": CONFIG.UA,
-          "accept": "*/*",
-          "referer": `${CONFIG.BASE}/`,
-          "cache-control": "no-cache",
-          ...(opts.cookies?.length && { cookie: cookieManager.toHeader(opts.cookies) }),
-          ...opts.headers,
-        }
-      });
-
-      // Check for valid response
-      if (response.status >= 500) {
-        throw new Error(`Server error: ${response.status}`);
-      }
-
-      return {
-        text: typeof response.data === "string" ? response.data : String(response.data ?? ""),
-        setCookie: cookieManager.normalize(response.headers["set-cookie"]),
-        status: response.status,
-        headers: response.headers,
-      };
-
-    } catch (error) {
-      if (i === retries - 1) throw error;
-      console.log(`Request failed, retry ${i + 1}/${retries}`);
-    }
-  }
 }
 
-// ==================== PARSERS ====================
-const parsers = {
-  home: (html) => {
-    const $ = cheerio.load(html);
-    const mailbox = $("#mailbox").val();
-    const salt = $("#salt").val();
-    
-    if (!mailbox || !salt) {
-      throw new APIError("Failed to parse homepage - site structure may have changed", 503);
-    }
-    
-    return { mailbox, salt };
-  },
+/** Extract the first OTP-style code (4–8 digits) from a string */
+function extractOTP(text) {
+if (!text) return null;
+const match = String(text).match(/\b\d{4,8}\b/);
+return match ? match[0] : null;
+}
 
-  inbox: (html) => {
-    const $ = cheerio.load(html);
-    const messages = [];
+/** How many seconds remain before the session expires */
+function secondsLeft(createdAt) {
+return Math.max(
+0,
+Math.round((SESSION_TTL - (Date.now() - createdAt)) / 1000)
+);
+}
 
-    $("table tbody tr").each((_, tr) => {
-      const cells = $(tr).find("td");
-      if (cells.length < 3) return;
+/** Rate-limit check — returns true if the request is allowed */
+function isAllowed(ip) {
+const now = Date.now();
+const entry = rateLimitStore.get(ip);
 
-      const link = cells.eq(1).find("a").attr("href");
-      const code = link?.match(/\/mailbox\/code\/([a-z0-9]+)/i)?.[1];
-      
-      if (code) {
-        messages.push({
-          sender: cells.eq(0).text().trim() || "Unknown",
-          subject: cells.eq(1).text().trim() || "(No Subject)",
-          time: cells.eq(2).text().trim(),
-          code,
-          link,
-          raw: link,
-        });
-      }
-    });
+if (!entry || now > entry.resetAt) {
+rateLimitStore.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+return true;
+}
 
-    return messages;
-  },
+if (entry.count >= RATE_LIMIT_MAX) return false;
 
-  message: (json) => {
-    try {
-      const data = typeof json === "string" ? JSON.parse(json) : json;
-      
-      if (data?.status === 1 && data?.msg?.content) {
-        const $ = cheerio.load(data.msg.content);
-        
-        // Extract text and clean it
-        const text = $.root().text()
-          .replace(/\s+/g, " ")
-          .replace(/[^\x20-\x7E\n\r\t]/g, "") // Remove non-printable chars
-          .trim();
+entry.count++;
+return true;
+}
 
-        // Extract links
-        const links = [];
-        $("a[href]").each((_, a) => {
-          const href = $(a).attr("href");
-          const text = $(a).text().trim();
-          if (href && !href.startsWith("#") && !href.startsWith("mailto:")) {
-            links.push({ text: text || "[link]", url: href });
-          }
-        });
+// ─── Core Actions ─────────────────────────────────────────────
 
-        return {
-          body: text,
-          html: data.msg.content,
-          links,
-          hasLinks: links.length > 0,
-        };
-      }
-    } catch (error) {
-      console.log("Message parse error:", error.message);
-    }
-    
-    return { body: "", html: "", links: [], hasLinks: false };
-  },
+/** Generate one or more temp emails */
+async function generateEmail(count = 1) {
+const results = [];
 
-  links: (html) => {
-    const $ = cheerio.load(html || "");
-    const links = [];
-    
-    $("a[href]").each((_, a) => {
-      const href = $(a).attr("href");
-      const text = $(a).text().trim();
-      if (href && !href.startsWith("#") && !href.startsWith("mailto:")) {
-        links.push({ text: text || "[link]", url: href });
-      }
-    });
-    
-    return links;
-  }
+for (let i = 0; i < Math.min(count, 5); i++) {
+const session = await getSession();
+const res = await client.post(
+“/generate-email”,
+{ email: [“plusGmail”, “dotGmail”, “googleMail”] },
+authHeaders(session)
+);
+
+```
+const email = res.data?.email?.[0];
+if (!email) throw new Error("Failed to generate email");
+
+sessionStore.set(email, { session, createdAt: Date.now() });
+results.push(email);
+```
+
+}
+
+return {
+emails: results,
+count: results.length,
+expires_in_seconds: SESSION_TTL / 1000,
+expires_in_human: “10 minutes”,
+note: “Use the same email to check inbox before it expires.”,
+made_by: BRAND.name,
+special_thanks: BRAND.thanks,
 };
-
-// ==================== BUSINESS LOGIC ====================
-async function generateMailbox() {
-  const cacheKey = "fresh_generate";
-  
-  // Check cache first
-  if (cache.has(cacheKey)) {
-    const cached = cache.get(cacheKey);
-    if (Date.now() - cached.timestamp < 5000) { // 5 second cache for generate
-      return cached.data;
-    }
-  }
-
-  const response = await request("GET", "/");
-  const { mailbox } = parsers.home(response.text);
-  
-  if (!mailbox) {
-    throw new APIError("Generation failed - no mailbox created", 503);
-  }
-
-  // Cache the result
-  cache.set(cacheKey, {
-    data: mailbox,
-    timestamp: Date.now()
-  });
-
-  return mailbox;
 }
 
-async function openMailbox(email) {
-  // Validate email format
-  if (!email || !email.includes("@") || !email.includes(".")) {
-    throw new APIError("Invalid email format", 400);
-  }
-
-  let cookies = [];
-
-  // Get homepage with cookies
-  const home = await request("GET", "/", { cookies });
-  cookies = cookieManager.merge(cookies, home.setCookie);
-
-  // Extract salt
-  const { salt } = parsers.home(home.text);
-  if (!salt) {
-    throw new APIError("Security token not found", 503);
-  }
-
-  // Activate mailbox
-  const activate = await request("POST", "/index/index/goactive.html", {
-    cookies,
-    headers: {
-      "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
-      "x-requested-with": "XMLHttpRequest",
-    },
-    data: new URLSearchParams({ mailbox: email }).toString(),
-  });
-
-  cookies = cookieManager.merge(cookies, activate.setCookie);
-
-  return { cookies, salt };
+/** Check inbox and open the first real message (with OTP extraction) */
+async function getInbox(email) {
+const stored = sessionStore.get(email);
+if (!stored) {
+return {
+error: “Session expired or not found. Please regenerate the email.”,
+made_by: BRAND.name,
+};
 }
 
-async function fetchMessages(email, cookies) {
-  // Check cache
-  const cacheKey = `inbox_${email}`;
-  if (cache.has(cacheKey)) {
-    const cached = cache.get(cacheKey);
-    if (Date.now() - cached.timestamp < CONFIG.CACHE_TTL) {
-      return cached.data;
-    }
-  }
+const { session, createdAt } = stored;
+const remaining = secondsLeft(createdAt);
 
-  // Get inbox page
-  const page = await request("GET", "/", { cookies });
-  cookies = cookieManager.merge(cookies, page.setCookie);
+const inboxRes = await client.post(
+“/message-list”,
+{ email },
+authHeaders(session)
+);
 
-  // Parse message list
-  const messageList = parsers.inbox(page.text);
-  
-  if (messageList.length === 0) {
-    return [];
-  }
+const inbox = inboxRes.data?.messageData || [];
+const realMails = inbox.filter(
+(m) => m.messageID && m.messageID !== “ADSVPN”
+);
 
-  // Fetch message details with concurrency control
-  const messages = [];
-  const batchSize = 3; // Fetch 3 at a time
-  
-  for (let i = 0; i < messageList.length; i += batchSize) {
-    const batch = messageList.slice(i, i + batchSize);
-    
-    const batchResults = await Promise.all(
-      batch.map(async (msg) => {
-        try {
-          // Visit detail page first
-          await request("GET", msg.link, { cookies });
-
-          // Get content via AJAX
-          const content = await request("POST", "/index/index/mailcontent.html", {
-            cookies,
-            headers: {
-              "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
-              "x-requested-with": "XMLHttpRequest",
-            },
-            data: new URLSearchParams({ code: msg.code }).toString(),
-          });
-
-          const parsed = parsers.message(content.text);
-
-          return {
-            sender: msg.sender,
-            subject: msg.subject,
-            time: msg.time,
-            receivedAt: now(),
-            ...parsed,
-            code: msg.code,
-          };
-
-        } catch (error) {
-          console.log(`Failed to fetch message ${msg.code}:`, error.message);
-          return {
-            sender: msg.sender,
-            subject: msg.subject,
-            time: msg.time,
-            error: "Failed to load content",
-            code: msg.code,
-          };
-        }
-      })
-    );
-
-    messages.push(...batchResults);
-    await sleep(100); // Small delay between batches
-  }
-
-  // Sort by time (newest first)
-  messages.sort((a, b) => {
-    if (a.time.includes("sec") && !b.time.includes("sec")) return -1;
-    if (!a.time.includes("sec") && b.time.includes("sec")) return 1;
-    return 0;
-  });
-
-  // Cache the result
-  cache.set(cacheKey, {
-    data: messages,
-    timestamp: Date.now()
-  });
-
-  return messages;
+if (realMails.length === 0) {
+return {
+inbox: [],
+message: “No emails received yet. Try again in a few seconds.”,
+session_expires_in_seconds: remaining,
+made_by: BRAND.name,
+special_thanks: BRAND.thanks,
+};
 }
 
-// ==================== MAIN HANDLER ====================
+// Open the latest message
+const mail = realMails[0];
+const htmlRes = await client.post(
+“/message-list”,
+{ email, messageID: mail.messageID },
+authHeaders(session)
+);
+
+const bodyText =
+typeof htmlRes.data === “string”
+? htmlRes.data
+: JSON.stringify(htmlRes.data);
+
+return {
+total_messages: realMails.length,
+latest: {
+messageID: mail.messageID,
+from: mail.from,
+subject: mail.subject,
+time: mail.time,
+otp: extractOTP(bodyText),   // ← auto-extracted OTP
+html: bodyText,
+},
+session_expires_in_seconds: remaining,
+made_by: BRAND.name,
+special_thanks: BRAND.thanks,
+};
+}
+
+/** Refresh: delete old session and generate a fresh email */
+async function refreshEmail(oldEmail) {
+if (oldEmail) sessionStore.delete(oldEmail);
+return generateEmail(1);
+}
+
+/** Return API status / info */
+function getStatus() {
+return {
+status: “online”,
+version: BRAND.version,
+made_by: BRAND.name,
+special_thanks: BRAND.thanks,
+active_sessions: sessionStore.size,
+endpoints: [
+{ method: “GET”, path: “/api/emailnator?action=generate” },
+{ method: “GET”, path: “/api/emailnator?action=generate&count=3” },
+{ method: “GET”, path: “/api/emailnator?action=inbox&email=test@gmail.com” },
+{ method: “GET”, path: “/api/emailnator?action=refresh&email=test@gmail.com” },
+{ method: “GET”, path: “/api/emailnator?action=status” },
+],
+};
+}
+
+// ─── Main Handler ─────────────────────────────────────────────
 export default async function handler(req, res) {
-  // Enable CORS for local dev
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
+if (req.method !== “GET”) {
+return res.status(405).json({ error: “Only GET requests are allowed.” });
+}
+
+// ── Rate Limiting ──────────────────────────────────────────
+const ip =
+req.headers[“x-forwarded-for”]?.split(”,”)[0].trim() ||
+req.socket?.remoteAddress ||
+“unknown”;
+
+if (!isAllowed(ip)) {
+return res.status(429).json({
+error: “Too many requests. Please wait a minute and try again.”,
+made_by: BRAND.name,
+});
+}
+
+// ── Route Actions ──────────────────────────────────────────
+const { action, email, count } = req.query;
+
+try {
+if (action === “status”) {
+return res.status(200).json(getStatus());
+}
+
+```
+if (action === "generate") {
+  const data = await generateEmail(parseInt(count) || 1);
+  return res.status(200).json(data);
+}
+
+if (action === "inbox") {
+  if (!email) {
+    return res.status(400).json({ error: "Missing ?email= parameter." });
   }
+  const data = await getInbox(email);
+  return res.status(200).json(data);
+}
 
-  if (req.method !== "GET") {
-    return res.status(405).json({
-      success: false,
-      error: "Method not allowed",
-      allowed: ["GET"]
-    });
-  }
+if (action === "refresh") {
+  const data = await refreshEmail(email || null);
+  return res.status(200).json(data);
+}
 
-  const startTime = Date.now();
+return res.status(400).json({
+  error: "Invalid or missing ?action= parameter.",
+  valid_actions: ["generate", "inbox", "refresh", "status"],
+  made_by: BRAND.name,
+  special_thanks: BRAND.thanks,
+});
+```
 
-  try {
-    const { action, email, force } = req.query;
-
-    // Force refresh by clearing cache
-    if (force === "true" && email) {
-      cache.delete(`inbox_${email}`);
-    }
-
-    // ===== GENERATE ACTION =====
-    if (action === "generate") {
-      const mailbox = await generateMailbox();
-      
-      return res.status(200).json({
-        success: true,
-        version: "2.0.0",
-        credits: {
-          creator: "munax",
-          thanks: "Jerry 🙏",
-        },
-        data: {
-          mailbox,
-          domain: "@emailtick.com",
-          full: mailbox.includes("@") ? mailbox : `${mailbox}@emailtick.com`,
-        },
-        meta: {
-          generatedAt: now(),
-          responseTime: `${Date.now() - startTime}ms`,
-        }
-      });
-    }
-
-    // ===== INBOX ACTION =====
-    if (action === "inbox") {
-      if (!email) {
-        return res.status(400).json({
-          success: false,
-          error: "Email parameter required",
-          example: "?action=inbox&email=xxxx@emailtick.com"
-        });
-      }
-
-      // Validate domain
-      if (!email.includes("@emailtick.com")) {
-        return res.status(400).json({
-          success: false,
-          error: "Invalid domain",
-          message: "Only @emailtick.com emails are supported",
-        });
-      }
-
-      const { cookies } = await openMailbox(email);
-      const messages = await fetchMessages(email, cookies);
-
-      return res.status(200).json({
-        success: true,
-        version: "2.0.0",
-        credits: {
-          creator: "munax",
-          thanks: "Jerry 🙏",
-        },
-        data: {
-          mailbox: email,
-          messageCount: messages.length,
-          unread: messages.length, // You could track read status here
-          messages,
-        },
-        meta: {
-          fetchedAt: now(),
-          responseTime: `${Date.now() - startTime}ms`,
-          cached: cache.has(`inbox_${email}`) && !force,
-        }
-      });
-    }
-
-    // ===== STATUS ACTION =====
-    if (action === "status") {
-      return res.status(200).json({
-        success: true,
-        status: "OPERATIONAL",
-        version: "2.0.0",
-        cache: {
-          size: cache.size,
-          items: Array.from(cache.keys()),
-        },
-        uptime: process.uptime(),
-        timestamp: now(),
-      });
-    }
-
-    // ===== INVALID ACTION =====
-    return res.status(400).json({
-      success: false,
-      error: "Invalid action",
-      available: ["generate", "inbox", "status"],
-      examples: {
-        generate: "?action=generate",
-        inbox: "?action=inbox&email=xxx@emailtick.com",
-        status: "?action=status",
-        refresh: "?action=inbox&email=xxx@emailtick.com&force=true",
-      }
-    });
-
-  } catch (error) {
-    console.error("API Error:", error);
-
-    const statusCode = error.code || 500;
-    const message = error.message || "Internal server error";
-
-    return res.status(statusCode).json({
-      success: false,
-      error: message,
-      version: "2.0.0",
-      meta: {
-        timestamp: now(),
-        responseTime: `${Date.now() - startTime}ms`,
-      }
-    });
-  }
+} catch (err) {
+return res.status(500).json({
+error: “Internal server error.”,
+message: err.message,
+made_by: BRAND.name,
+});
+}
 }
