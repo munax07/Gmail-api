@@ -1,5 +1,12 @@
 {
-  "rewrites": [
-    { "source": "/api/emailnator", "destination": "/api/emailnator" }
+  "version": 2,
+  "builds": [
+    { "src": "api/emailnator.js", "use": "@vercel/node" },
+    { "src": "*.html", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/emailnator(.*)", "dest": "/api/emailnator.js" },
+    { "src": "/dashboard.html", "dest": "/dashboard.html" },
+    { "src": "/", "dest": "/dashboard.html" }
   ]
 }
