@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MUNAX MAIL</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:       #0c0c0c;
+      --bg2:      #141414;
+      --bg3:      #1a1a1a;
+      --border:   #2a2a2a;
+      --border2:  #333;
+      --text:     #d4d4d4;
+      --text-dim: #666;
+      --text-xs:  #444;
+      --white:    #f0f0f0;
+      --tag:      #242424;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    .page {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 48px 20px 80px;
+    }
+    /* Header */
+    header {
+      margin-bottom: 44px;
+      animation: fadeUp 0.5s ease both;
+    }
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .wordmark {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 22px;
+      letter-spacing: 0.08em;
+      color: var(--white);
+    }
+    .wordmark span { color: var(--text-dim); font-weight: 400; }
+    .badge {
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      color: var(--text-dim);
+      background: var(--tag);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 4px;
+    }
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin-bottom: 20px;
+    }
+    .header-meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 11px;
+      color: var(--text-xs);
+      letter-spacing: 0.08em;
+    }
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: #4a9e6b;
+      animation: blink 3s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    /* Cards */
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 16px;
+      animation: fadeUp 0.5s ease both;
+    }
+    .card:nth-child(2) { animation-delay: 0.08s; }
+    .card:nth-child(3) { animation-delay: 0.14s; }
+    .section-label {
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      color: var(--text-xs);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    /* Email box */
+    .email-box {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-size: 14px;
+      color: var(--white);
+      letter-spacing: 0.02em;
+      min-height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+      word-break: break-all;
+    }
+    .email-placeholder { color: var(--text-xs); font-size: 12px; }
+    .copy-btn {
+      flex-shrink: 0;
+      background: var(--tag);
+      border: 1px solid var(--border2);
+      color: var(--text-dim);
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .copy-btn:hover { background: var(--border); color: var(--white); }
+    /* Timer */
+    .timer-section { margin-bottom: 14px; display: none; }
+    .timer-row {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .timer-value {
+      font-family: 'Syne', sans-serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--white);
+      letter-spacing: 0.04em;
+    }
+    .timer-value.warn { color: #c0614a; }
+    .timer-note { font-size: 10px; color: var(--text-xs); letter-spacing: 0.1em; }
+    .progress-track {
+      height: 2px;
+      background: var(--bg3);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 100%;
+      background: var(--border2);
+      border-radius: 99px;
+      transition: width 1s linear, background 1s;
+    }
+    .progress-fill.warn { background: #6a2a1a; }
+    /* Buttons */
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .btn-row.full { grid-template-columns: 1fr; }
+    button {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      padding: 13px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      color: var(--text);
+      transition: all 0.15s;
+      position: relative;
+      overflow: hidden;
+    }
+    button:hover:not(:disabled) {
+      background: var(--tag);
+      border-color: var(--border2);
+      color: var(--white);
+    }
+    button:active:not(:disabled) { transform: scale(0.98); }
+    button.primary {
+      background: var(--white);
+      color: var(--bg);
+      border-color: var(--white);
+      font-weight: 500;
+    }
+    button.primary:hover:not(:disabled) {
+      background: #d8d8d8;
+      border-color: #d8d8d8;
+    }
+    button:disabled { opacity: 0.3; cursor: not-allowed; }
+    button.loading span { opacity: 0; }
+    button.loading::after {
+      content: '';
+      position: absolute;
+      width: 14px; height: 14px;
+      top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      border: 1.5px solid transparent;
+      border-top-color: currentColor;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
+    /* Inbox */
+    .inbox-empty {
+      padding: 28px 0;
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-xs);
+      letter-spacing: 0.08em;
+    }
+    .inbox-empty .icon { font-size: 28px; margin-bottom: 10px; opacity: 0.4; }
+    .mail-wrap { animation: fadeUp 0.3s ease both; }
+    .mail-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .mail-from { font-size: 11px; color: var(--text-dim); }
+    .mail-time { font-size: 10px; color: var(--text-xs); }
+    .mail-subject {
+      font-family: 'Syne', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 18px;
+      line-height: 1.4;
+    }
+    /* OTP */
+    .otp-wrap {
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      padding: 22px;
+      text-align: center;
+      margin-bottom: 14px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      position: relative;
+    }
+    .otp-wrap:hover { background: var(--tag); border-color: #3a3a3a; }
+    .otp-label-sm {
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      color: var(--text-xs);
+      margin-bottom: 10px;
+      text-transform: uppercase;
+    }
+    .otp-number {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(34px, 10vw, 52px);
+      font-weight: 800;
+      color: var(--white);
+      letter-spacing: 0.15em;
+    }
+    .otp-hint { font-size: 10px; color: var(--text-xs); margin-top: 8px; letter-spacing: 0.1em; }
+    .copied-badge {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%,-50%) scale(0);
+      background: var(--white);
+      color: var(--bg);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      padding: 6px 14px;
+      border-radius: 6px;
+      transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 10;
+    }
+    .copied-badge.show { transform: translate(-50%,-50%) scale(1); }
+    /* Auto refresh */
+    .auto-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 16px;
+      margin-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+    .auto-label {
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: 0.08em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .auto-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--border2);
+      transition: background 0.2s;
+    }
+    .auto-dot.on { background: #4a9e6b; }
+    .toggle {
+      width: 38px; height: 20px;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: 99px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .toggle.on { background: var(--white); border-color: var(--white); }
+    .toggle::after {
+      content: '';
+      position: absolute;
+      width: 14px; height: 14px;
+      background: var(--text-dim);
+      border-radius: 50%;
+      top: 2px; left: 2px;
+      transition: left 0.25s cubic-bezier(0.34,1.56,0.64,1), background 0.2s;
+    }
+    .toggle.on::after { left: 20px; background: var(--bg); }
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(60px);
+      opacity: 0;
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      padding: 10px 18px;
+      border-radius: 8px;
+      white-space: nowrap;
+      transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1);
+      z-index: 999;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    /* Footer */
+    footer {
+      text-align: center;
+      padding-top: 40px;
+      animation: fadeUp 0.5s 0.3s ease both;
+      opacity: 0;
+      animation-fill-mode: both;
+    }
+    .footer-name {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 16px;
+      letter-spacing: 0.15em;
+      color: var(--border2);
+    }
+    .footer-sub {
+      font-size: 10px;
+      color: var(--text-xs);
+      letter-spacing: 0.12em;
+      margin-top: 4px;
+    }
+    @keyframes fadeUp {
+      from { opacity:0; transform: translateY(14px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+    @media (max-width: 460px) {
+      .page { padding: 32px 14px 60px; }
+      .btn-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<div class="page">
+
+  <header>
+    <div class="header-top">
+      <div class="wordmark">MUNAX <span>MAIL</span></div>
+      <div class="badge">v2.0</div>
+    </div>
+    <div class="divider"></div>
+    <div class="header-meta">
+      <div class="status-pill">
+        <div class="dot"></div>
+        <span>SYSTEM ONLINE</span>
+      </div>
+      <span style="color:var(--border2)">·</span>
+      <span id="session-count">STATELESS</span>
+    </div>
+  </header>
+
+  <!-- Generate Card -->
+  <div class="card">
+    <div class="section-label">Generate Email</div>
+    <div class="email-box" id="email-box">
+      <span id="email-text" class="email-placeholder">No email generated yet</span>
+      <button class="copy-btn" id="copy-email-btn" onclick="copyEmail()" style="display:none">COPY</button>
+    </div>
+    <div class="timer-section" id="timer-section">
+      <div class="timer-row">
+        <div class="timer-value" id="timer">10:00</div>
+        <div class="timer-note">remaining</div>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+    </div>
+    <div style="height:14px"></div>
+    <div class="btn-row">
+      <button class="primary" id="btn-generate" onclick="generateEmail()">
+        <span>GENERATE</span>
+      </button>
+      <button id="btn-refresh" onclick="refreshEmail()" disabled>
+        <span>NEW EMAIL</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Inbox Card -->
+  <div class="card">
+    <div class="section-label">Inbox</div>
+    <div id="inbox-content">
+      <div class="inbox-empty">
+        <div class="icon">📭</div>
+        <div>GENERATE AN EMAIL TO START</div>
+      </div>
+    </div>
+    <div class="auto-row">
+      <div class="auto-label">
+        <div class="auto-dot" id="auto-dot"></div>
+        AUTO-REFRESH EVERY 5s
+      </div>
+      <div class="toggle" id="auto-toggle" onclick="toggleAuto()"></div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <div class="footer-name">MUNAX</div>
+  <div class="footer-sub">SPECIAL THANKS TO JERRY · ALL RIGHTS RESERVED</div>
+</footer>
+
+<script>
+  const API_BASE = "/api/emailnator";
+
+  let currentEmail = null;
+  let currentSession = null;
+  let timerInterval = null;
+  let autoInterval  = null;
+  let secondsLeft   = 600;
+  let autoOn        = false;
+
+  function toast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 2500);
+  }
+
+  function startTimer(secs) {
+    secondsLeft = secs;
+    clearInterval(timerInterval);
+    document.getElementById("timer-section").style.display = "block";
+
+    timerInterval = setInterval(() => {
+      secondsLeft--;
+      const m = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
+      const s = String(secondsLeft % 60).padStart(2, "0");
+      const el = document.getElementById("timer");
+      const pf = document.getElementById("progress-fill");
+
+      el.textContent = `${m}:${s}`;
+      pf.style.width = (secondsLeft / 600 * 100) + "%";
+
+      if (secondsLeft <= 60) {
+        el.classList.add("warn");
+        pf.classList.add("warn");
+      }
+
+      if (secondsLeft <= 0) {
+        clearInterval(timerInterval);
+        el.textContent = "EXPIRED";
+        toast("Session expired — generate a new email");
+        currentEmail = null;
+        currentSession = null;
+        stopAuto();
+      }
+    }, 1000);
+  }
+
+  async function generateEmail() {
+    const btn = document.getElementById("btn-generate");
+    btn.classList.add("loading"); btn.disabled = true;
+    try {
+      const res  = await fetch(`${API_BASE}?action=generate`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      
+      currentEmail = data.emails[0];
+      currentSession = data.sessions[0];
+      
+      setEmailDisplay(currentEmail);
+      document.getElementById("btn-refresh").disabled = false;
+      startTimer(data.expires_in_seconds || 600);
+      setInboxWaiting();
+      toast("New email generated");
+    } catch (e) {
+      toast("Error: " + e.message);
+    } finally {
+      btn.classList.remove("loading"); btn.disabled = false;
+    }
+  }
+
+  async function refreshEmail() {
+    const btn = document.getElementById("btn-refresh");
+    btn.classList.add("loading"); btn.disabled = true;
+    clearInterval(timerInterval);
+    try {
+      const res  = await fetch(`${API_BASE}?action=refresh`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      
+      currentEmail = data.emails[0];
+      currentSession = data.sessions[0];
+      
+      setEmailDisplay(currentEmail);
+      startTimer(600);
+      setInboxWaiting();
+      toast("New email generated");
+    } catch (e) {
+      toast("Error: " + e.message);
+    } finally {
+      btn.classList.remove("loading"); btn.disabled = false;
+    }
+  }
+
+  async function checkInbox(silent = false) {
+    if (!currentEmail || !currentSession) {
+      if (!silent) toast("Generate an email first");
+      return;
+    }
+    const btn = document.getElementById("btn-check");
+    if (btn) { btn.classList.add("loading"); btn.disabled = true; }
+    try {
+      const params = new URLSearchParams({
+        action: "inbox",
+        email: currentEmail,
+        cookies: currentSession.cookies,
+        xsrf: currentSession.xsrf
+      });
+      const res = await fetch(`${API_BASE}?${params}`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      
+      if (data.inbox && data.inbox.length === 0) {
+        if (!silent) setInboxEmpty();
+      } else {
+        renderMail(data);
+      }
+    } catch (e) {
+      if (!silent) toast("Error: " + e.message);
+    } finally {
+      if (btn) { btn.classList.remove("loading"); btn.disabled = false; }
+    }
+  }
+
+  function setEmailDisplay(email) {
+    const txt = document.getElementById("email-text");
+    const btn = document.getElementById("copy-email-btn");
+    txt.textContent = email;
+    txt.style.color = "var(--white)";
+    txt.classList.remove("email-placeholder");
+    btn.style.display = "inline-block";
+  }
+
+  function setInboxWaiting() {
+    document.getElementById("inbox-content").innerHTML = `
+      <div class="inbox-empty">
+        <div class="icon">⏳</div>
+        <div>WAITING FOR EMAILS</div>
+      </div>
+      <div style="height:14px"></div>
+      <div class="btn-row full">
+        <button id="btn-check" onclick="checkInbox()"><span>CHECK INBOX</span></button>
+      </div>`;
+  }
+
+  function setInboxEmpty() {
+    if (document.querySelector(".mail-wrap")) return;
+    document.getElementById("inbox-content").innerHTML = `
+      <div class="inbox-empty">
+        <div class="icon">📭</div>
+        <div>NO EMAILS YET</div>
+      </div>
+      <div style="height:14px"></div>
+      <div class="btn-row full">
+        <button id="btn-check" onclick="checkInbox()"><span>CHECK AGAIN</span></button>
+      </div>`;
+  }
+
+  function renderMail(data) {
+    const mail = data.latest || data;
+    const otp = mail.otp || extractOTP(String(mail.html || ""));
+
+    const otpHtml = otp ? `
+      <div class="otp-wrap" onclick="copyOTP('${otp}')">
+        <div class="otp-label-sm">OTP / Verification Code — tap to copy</div>
+        <div class="otp-number">${otp}</div>
+        <div class="otp-hint">tap to copy</div>
+        <div class="copied-badge" id="otp-copied">COPIED</div>
+      </div>` : "";
+
+    document.getElementById("inbox-content").innerHTML = `
+      <div class="mail-wrap">
+        <div class="mail-meta">
+          <div class="mail-from">${esc(mail.from || "unknown")}</div>
+          <div class="mail-time">${esc(mail.time || "")}</div>
+        </div>
+        <div class="mail-subject">${esc(mail.subject || "(no subject)")}</div>
+        ${otpHtml}
+        <div class="btn-row full">
+          <button id="btn-check" onclick="checkInbox()"><span>REFRESH INBOX</span></button>
+        </div>
+      </div>`;
+  }
+
+  function extractOTP(text) {
+    const m = String(text).match(/\b\d{4,8}\b/);
+    return m ? m[0] : null;
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  async function copyEmail() {
+    if (!currentEmail) return;
+    await navigator.clipboard.writeText(currentEmail).catch(() => {});
+    toast("Email copied");
+  }
+
+  function copyOTP(code) {
+    navigator.clipboard.writeText(code).catch(() => {});
+    const badge = document.getElementById("otp-copied");
+    if (badge) {
+      badge.classList.add("show");
+      setTimeout(() => badge.classList.remove("show"), 1000);
+    }
+    toast("OTP " + code + " copied");
+  }
+
+  function toggleAuto() {
+    autoOn = !autoOn;
+    const tog = document.getElementById("auto-toggle");
+    const dot = document.getElementById("auto-dot");
+    if (autoOn) {
+      tog.classList.add("on"); dot.classList.add("on");
+      autoInterval = setInterval(() => checkInbox(true), 5000);
+      toast("Auto-refresh ON");
+    } else {
+      stopAuto();
+      toast("Auto-refresh OFF");
+    }
+  }
+
+  function stopAuto() {
+    clearInterval(autoInterval);
+    autoOn = false;
+    const tog = document.getElementById("auto-toggle");
+    const dot = document.getElementById("auto-dot");
+    if (tog) tog.classList.remove("on");
+    if (dot) dot.classList.remove("on");
+  }
+</script>
+</body>
+</html>
