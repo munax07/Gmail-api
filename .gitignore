@@ -1,0 +1,8 @@
+node_modules
+.env
+.DS_Store
+vercel/.env
+*.log
+cache/
+temp/
+.vscode
