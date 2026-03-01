@@ -1,26 +1,19 @@
-import axios from “axios”;
+const axios = require(“axios”);
 
 // ============================================================
-//   📧 EMAILNATOR API
-//   Made by munax
+//   📧 EMAILNATOR API — Made by munax
 //   Special thanks to jerry 💙
 // ============================================================
 
-const BRAND = {
-name: “munax”,
-thanks: “jerry”,
-version: “2.0.0”,
-};
+const BRAND = { name: “munax”, thanks: “jerry”, version: “2.0.0” };
 
-// ─── Session & Rate Limit Stores ────────────────────────────
-const sessionStore = new Map();   // email → { session, createdAt }
-const rateLimitStore = new Map(); // ip → { count, resetAt }
+const sessionStore = new Map();
+const rateLimitStore = new Map();
 
-const SESSION_TTL = 600_000;      // 10 minutes in ms
-const RATE_LIMIT_MAX = 10;        // max requests per window
-const RATE_LIMIT_WINDOW = 60_000; // 1 minute window
+const SESSION_TTL = 600_000;
+const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_WINDOW = 60_000;
 
-// ─── Axios Client ────────────────────────────────────────────
 const client = axios.create({
 baseURL: “https://www.emailnator.com”,
 withCredentials: true,
@@ -30,13 +23,10 @@ accept: “application/json, text/plain, */*”,
 },
 });
 
-// ─── Helpers ─────────────────────────────────────────────────
 async function getSession() {
 const home = await client.get(”/”);
 const cookies = home.headers[“set-cookie”].join(”; “);
-const xsrf = decodeURIComponent(
-cookies.match(/XSRF-TOKEN=([^;]+)/)[1]
-);
+const xsrf = decodeURIComponent(cookies.match(/XSRF-TOKEN=([^;]+)/)[1]);
 return { cookies, xsrf };
 }
 
@@ -51,43 +41,30 @@ cookie: session.cookies,
 };
 }
 
-/** Extract the first OTP-style code (4–8 digits) from a string */
 function extractOTP(text) {
 if (!text) return null;
 const match = String(text).match(/\b\d{4,8}\b/);
 return match ? match[0] : null;
 }
 
-/** How many seconds remain before the session expires */
 function secondsLeft(createdAt) {
-return Math.max(
-0,
-Math.round((SESSION_TTL - (Date.now() - createdAt)) / 1000)
-);
+return Math.max(0, Math.round((SESSION_TTL - (Date.now() - createdAt)) / 1000));
 }
 
-/** Rate-limit check — returns true if the request is allowed */
 function isAllowed(ip) {
 const now = Date.now();
 const entry = rateLimitStore.get(ip);
-
 if (!entry || now > entry.resetAt) {
 rateLimitStore.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
 return true;
 }
-
 if (entry.count >= RATE_LIMIT_MAX) return false;
-
 entry.count++;
 return true;
 }
 
-// ─── Core Actions ─────────────────────────────────────────────
-
-/** Generate one or more temp emails */
 async function generateEmail(count = 1) {
 const results = [];
-
 for (let i = 0; i < Math.min(count, 5); i++) {
 const session = await getSession();
 const res = await client.post(
@@ -95,17 +72,11 @@ const res = await client.post(
 { email: [“plusGmail”, “dotGmail”, “googleMail”] },
 authHeaders(session)
 );
-
-```
 const email = res.data?.email?.[0];
-if (!email) throw new Error("Failed to generate email");
-
+if (!email) throw new Error(“Failed to generate email”);
 sessionStore.set(email, { session, createdAt: Date.now() });
 results.push(email);
-```
-
 }
-
 return {
 emails: results,
 count: results.length,
@@ -117,52 +88,30 @@ special_thanks: BRAND.thanks,
 };
 }
 
-/** Check inbox and open the first real message (with OTP extraction) */
 async function getInbox(email) {
 const stored = sessionStore.get(email);
 if (!stored) {
-return {
-error: “Session expired or not found. Please regenerate the email.”,
-made_by: BRAND.name,
-};
+return { error: “Session expired or not found. Please regenerate the email.”, made_by: BRAND.name };
 }
-
 const { session, createdAt } = stored;
 const remaining = secondsLeft(createdAt);
-
-const inboxRes = await client.post(
-“/message-list”,
-{ email },
-authHeaders(session)
-);
-
+const inboxRes = await client.post(”/message-list”, { email }, authHeaders(session));
 const inbox = inboxRes.data?.messageData || [];
-const realMails = inbox.filter(
-(m) => m.messageID && m.messageID !== “ADSVPN”
-);
+const realMails = inbox.filter((m) => m.messageID && m.messageID !== “ADSVPN”);
 
 if (realMails.length === 0) {
 return {
 inbox: [],
-message: “No emails received yet. Try again in a few seconds.”,
+message: “No emails received yet.”,
 session_expires_in_seconds: remaining,
 made_by: BRAND.name,
 special_thanks: BRAND.thanks,
 };
 }
 
-// Open the latest message
 const mail = realMails[0];
-const htmlRes = await client.post(
-“/message-list”,
-{ email, messageID: mail.messageID },
-authHeaders(session)
-);
-
-const bodyText =
-typeof htmlRes.data === “string”
-? htmlRes.data
-: JSON.stringify(htmlRes.data);
+const htmlRes = await client.post(”/message-list”, { email, messageID: mail.messageID }, authHeaders(session));
+const bodyText = typeof htmlRes.data === “string” ? htmlRes.data : JSON.stringify(htmlRes.data);
 
 return {
 total_messages: realMails.length,
@@ -171,7 +120,7 @@ messageID: mail.messageID,
 from: mail.from,
 subject: mail.subject,
 time: mail.time,
-otp: extractOTP(bodyText),   // ← auto-extracted OTP
+otp: extractOTP(bodyText),
 html: bodyText,
 },
 session_expires_in_seconds: remaining,
@@ -180,13 +129,11 @@ special_thanks: BRAND.thanks,
 };
 }
 
-/** Refresh: delete old session and generate a fresh email */
 async function refreshEmail(oldEmail) {
 if (oldEmail) sessionStore.delete(oldEmail);
 return generateEmail(1);
 }
 
-/** Return API status / info */
 function getStatus() {
 return {
 status: “online”,
@@ -194,75 +141,43 @@ version: BRAND.version,
 made_by: BRAND.name,
 special_thanks: BRAND.thanks,
 active_sessions: sessionStore.size,
-endpoints: [
-{ method: “GET”, path: “/api/emailnator?action=generate” },
-{ method: “GET”, path: “/api/emailnator?action=generate&count=3” },
-{ method: “GET”, path: “/api/emailnator?action=inbox&email=test@gmail.com” },
-{ method: “GET”, path: “/api/emailnator?action=refresh&email=test@gmail.com” },
-{ method: “GET”, path: “/api/emailnator?action=status” },
-],
 };
 }
 
-// ─── Main Handler ─────────────────────────────────────────────
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
 if (req.method !== “GET”) {
-return res.status(405).json({ error: “Only GET requests are allowed.” });
+return res.status(405).json({ error: “Only GET requests allowed.” });
 }
 
-// ── Rate Limiting ──────────────────────────────────────────
 const ip =
 req.headers[“x-forwarded-for”]?.split(”,”)[0].trim() ||
 req.socket?.remoteAddress ||
 “unknown”;
 
 if (!isAllowed(ip)) {
-return res.status(429).json({
-error: “Too many requests. Please wait a minute and try again.”,
-made_by: BRAND.name,
-});
+return res.status(429).json({ error: “Too many requests. Wait a minute.”, made_by: BRAND.name });
 }
 
-// ── Route Actions ──────────────────────────────────────────
 const { action, email, count } = req.query;
 
 try {
-if (action === “status”) {
-return res.status(200).json(getStatus());
+if (action === “status”) return res.status(200).json(getStatus());
+if (action === “generate”) return res.status(200).json(await generateEmail(parseInt(count) || 1));
+if (action === “inbox”) {
+if (!email) return res.status(400).json({ error: “Missing ?email= parameter.” });
+return res.status(200).json(await getInbox(email));
 }
+if (action === “refresh”) return res.status(200).json(await refreshEmail(email || null));
 
 ```
-if (action === "generate") {
-  const data = await generateEmail(parseInt(count) || 1);
-  return res.status(200).json(data);
-}
-
-if (action === "inbox") {
-  if (!email) {
-    return res.status(400).json({ error: "Missing ?email= parameter." });
-  }
-  const data = await getInbox(email);
-  return res.status(200).json(data);
-}
-
-if (action === "refresh") {
-  const data = await refreshEmail(email || null);
-  return res.status(200).json(data);
-}
-
 return res.status(400).json({
-  error: "Invalid or missing ?action= parameter.",
+  error: "Invalid action.",
   valid_actions: ["generate", "inbox", "refresh", "status"],
   made_by: BRAND.name,
-  special_thanks: BRAND.thanks,
 });
 ```
 
 } catch (err) {
-return res.status(500).json({
-error: “Internal server error.”,
-message: err.message,
-made_by: BRAND.name,
-});
+return res.status(500).json({ error: “Internal error.”, message: err.message, made_by: BRAND.name });
 }
-}
+};
