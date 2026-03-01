@@ -1,14 +1,5 @@
 {
-  "version": 2,
-  "functions": {
-    "api/email.js": {
-      "maxDuration": 10
-    }
-  },
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/api/email.js"
-    }
+  "rewrites": [
+    { "source": "/api/emailnator", "destination": "/api/emailnator" }
   ]
 }
