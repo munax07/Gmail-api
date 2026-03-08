@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>MUNAX MAIL</title>
+  <title>MUNAX MAIL · PEAK v3</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;700;800&display=swap" rel="stylesheet"/>
   <style>
     :root {
@@ -17,6 +17,7 @@
       --text-xs:  #444;
       --white:    #f0f0f0;
       --tag:      #242424;
+      --accent:   #4a9e6b;
     }
     * { margin:0; padding:0; box-sizing:border-box; }
     body {
@@ -31,7 +32,6 @@
       margin: 0 auto;
       padding: 48px 20px 80px;
     }
-    /* Header */
     header {
       margin-bottom: 44px;
       animation: fadeUp 0.5s ease both;
@@ -80,11 +80,10 @@
     .dot {
       width: 5px; height: 5px;
       border-radius: 50%;
-      background: #4a9e6b;
+      background: var(--accent);
       animation: blink 3s ease-in-out infinite;
     }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
-    /* Cards */
     .card {
       background: var(--bg2);
       border: 1px solid var(--border);
@@ -102,7 +101,6 @@
       text-transform: uppercase;
       margin-bottom: 12px;
     }
-    /* Email box */
     .email-box {
       background: var(--bg3);
       border: 1px solid var(--border);
@@ -135,7 +133,6 @@
       white-space: nowrap;
     }
     .copy-btn:hover { background: var(--border); color: var(--white); }
-    /* Timer */
     .timer-section { margin-bottom: 14px; display: none; }
     .timer-row {
       display: flex;
@@ -166,7 +163,6 @@
       transition: width 1s linear, background 1s;
     }
     .progress-fill.warn { background: #6a2a1a; }
-    /* Buttons */
     .btn-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -217,7 +213,6 @@
       animation: spin 0.6s linear infinite;
     }
     @keyframes spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
-    /* Inbox */
     .inbox-empty {
       padding: 28px 0;
       text-align: center;
@@ -226,6 +221,40 @@
       letter-spacing: 0.08em;
     }
     .inbox-empty .icon { font-size: 28px; margin-bottom: 10px; opacity: 0.4; }
+    .message-list {
+      margin-bottom: 20px;
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg3);
+    }
+    .message-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .message-item:last-child { border-bottom: none; }
+    .message-item:hover { background: var(--tag); }
+    .message-item.selected {
+      background: var(--border2);
+      border-left: 3px solid var(--accent);
+    }
+    .message-sender {
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+    .message-subject {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--white);
+      margin: 4px 0 2px;
+    }
+    .message-time {
+      font-size: 9px;
+      color: var(--text-xs);
+    }
     .mail-wrap { animation: fadeUp 0.3s ease both; }
     .mail-meta {
       display: flex;
@@ -245,7 +274,6 @@
       margin-bottom: 18px;
       line-height: 1.4;
     }
-    /* OTP */
     .otp-wrap {
       background: var(--bg3);
       border: 1px solid var(--border2);
@@ -273,6 +301,23 @@
       letter-spacing: 0.15em;
     }
     .otp-hint { font-size: 10px; color: var(--text-xs); margin-top: 8px; letter-spacing: 0.1em; }
+    .links-section {
+      margin: 16px 0;
+    }
+    .link-item {
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin-bottom: 8px;
+      word-break: break-all;
+    }
+    .link-url {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 12px;
+    }
+    .link-url:hover { text-decoration: underline; }
     .copied-badge {
       position: absolute;
       top: 50%; left: 50%;
@@ -290,7 +335,6 @@
       z-index: 10;
     }
     .copied-badge.show { transform: translate(-50%,-50%) scale(1); }
-    /* Auto refresh */
     .auto-row {
       display: flex;
       align-items: center;
@@ -313,7 +357,7 @@
       background: var(--border2);
       transition: background 0.2s;
     }
-    .auto-dot.on { background: #4a9e6b; }
+    .auto-dot.on { background: var(--accent); }
     .toggle {
       width: 38px; height: 20px;
       background: var(--bg3);
@@ -334,7 +378,6 @@
       transition: left 0.25s cubic-bezier(0.34,1.56,0.64,1), background 0.2s;
     }
     .toggle.on::after { left: 20px; background: var(--bg); }
-    /* Toast */
     #toast {
       position: fixed;
       bottom: 24px; left: 50%;
@@ -353,7 +396,6 @@
       z-index: 999;
     }
     #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
-    /* Footer */
     footer {
       text-align: center;
       padding-top: 40px;
@@ -393,16 +435,16 @@
   <header>
     <div class="header-top">
       <div class="wordmark">MUNAX <span>MAIL</span></div>
-      <div class="badge">v2.0</div>
+      <div class="badge">v3.0 PEAK</div>
     </div>
     <div class="divider"></div>
     <div class="header-meta">
       <div class="status-pill">
         <div class="dot"></div>
-        <span>SYSTEM ONLINE</span>
+        <span id="system-status">ONLINE</span>
       </div>
       <span style="color:var(--border2)">·</span>
-      <span id="session-count">STATELESS</span>
+      <span id="session-info">—</span>
     </div>
   </header>
 
@@ -455,144 +497,197 @@
 
 <footer>
   <div class="footer-name">MUNAX</div>
-  <div class="footer-sub">SPECIAL THANKS TO JERRY · ALL RIGHTS RESERVED</div>
+  <div class="footer-sub">SPECIAL THANKS TO JERRY · PEAK v3</div>
 </footer>
 
 <script>
-  const API_BASE = "/api/emailnator";
+  const API_BASE = '/api/emailnator';
 
+  // State
   let currentEmail = null;
-  let currentSession = null;
   let timerInterval = null;
-  let autoInterval  = null;
-  let secondsLeft   = 600;
-  let autoOn        = false;
+  let autoInterval = null;
+  let secondsLeft = 600;
+  let autoOn = false;
+  let allMessages = [];           // list of { messageID, from, subject, time }
+  let selectedMessageId = null;   // currently displayed message ID
+  let currentMessageDetail = null; // full detail of selected message
 
+  // DOM Elements
+  const emailText = document.getElementById('email-text');
+  const copyBtn = document.getElementById('copy-email-btn');
+  const timerSection = document.getElementById('timer-section');
+  const timerEl = document.getElementById('timer');
+  const progressFill = document.getElementById('progress-fill');
+  const btnGenerate = document.getElementById('btn-generate');
+  const btnRefresh = document.getElementById('btn-refresh');
+  const inboxContent = document.getElementById('inbox-content');
+  const autoDot = document.getElementById('auto-dot');
+  const autoToggle = document.getElementById('auto-toggle');
+  const systemStatus = document.getElementById('system-status');
+  const sessionInfo = document.getElementById('session-info');
+
+  // Helpers
   function toast(msg) {
-    const t = document.getElementById("toast");
+    const t = document.getElementById('toast');
     t.textContent = msg;
-    t.classList.add("show");
-    setTimeout(() => t.classList.remove("show"), 2500);
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
   }
 
   function startTimer(secs) {
     secondsLeft = secs;
     clearInterval(timerInterval);
-    document.getElementById("timer-section").style.display = "block";
+    timerSection.style.display = 'block';
 
     timerInterval = setInterval(() => {
       secondsLeft--;
-      const m = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
-      const s = String(secondsLeft % 60).padStart(2, "0");
-      const el = document.getElementById("timer");
-      const pf = document.getElementById("progress-fill");
-
-      el.textContent = `${m}:${s}`;
-      pf.style.width = (secondsLeft / 600 * 100) + "%";
+      const m = String(Math.floor(secondsLeft / 60)).padStart(2, '0');
+      const s = String(secondsLeft % 60).padStart(2, '0');
+      timerEl.textContent = `${m}:${s}`;
+      progressFill.style.width = (secondsLeft / 600 * 100) + '%';
 
       if (secondsLeft <= 60) {
-        el.classList.add("warn");
-        pf.classList.add("warn");
+        timerEl.classList.add('warn');
+        progressFill.classList.add('warn');
       }
 
       if (secondsLeft <= 0) {
         clearInterval(timerInterval);
-        el.textContent = "EXPIRED";
-        toast("Session expired — generate a new email");
+        timerEl.textContent = 'EXPIRED';
+        toast('Session expired — generate a new email');
         currentEmail = null;
-        currentSession = null;
         stopAuto();
+        updateInboxView();
       }
     }, 1000);
   }
 
+  function setEmailDisplay(email) {
+    emailText.textContent = email;
+    emailText.style.color = 'var(--white)';
+    emailText.classList.remove('email-placeholder');
+    copyBtn.style.display = 'inline-block';
+  }
+
+  function clearEmailDisplay() {
+    emailText.textContent = 'No email generated yet';
+    emailText.style.color = '';
+    emailText.classList.add('email-placeholder');
+    copyBtn.style.display = 'none';
+    timerSection.style.display = 'none';
+    btnRefresh.disabled = true;
+  }
+
+  // API Calls
   async function generateEmail() {
-    const btn = document.getElementById("btn-generate");
-    btn.classList.add("loading"); btn.disabled = true;
+    btnGenerate.classList.add('loading'); btnGenerate.disabled = true;
     try {
-      const res  = await fetch(`${API_BASE}?action=generate`);
+      const res = await fetch(`${API_BASE}?action=generate`);
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      
+      if (!data.success) throw new Error(data.error || 'Generation failed');
+
       currentEmail = data.emails[0];
-      currentSession = data.sessions[0];
-      
       setEmailDisplay(currentEmail);
-      document.getElementById("btn-refresh").disabled = false;
+      btnRefresh.disabled = false;
       startTimer(data.expires_in_seconds || 600);
+      allMessages = [];
+      selectedMessageId = null;
+      currentMessageDetail = null;
       setInboxWaiting();
-      toast("New email generated");
+      toast('New email generated');
     } catch (e) {
-      toast("Error: " + e.message);
+      toast('Error: ' + e.message);
     } finally {
-      btn.classList.remove("loading"); btn.disabled = false;
+      btnGenerate.classList.remove('loading'); btnGenerate.disabled = false;
     }
   }
 
   async function refreshEmail() {
-    const btn = document.getElementById("btn-refresh");
-    btn.classList.add("loading"); btn.disabled = true;
+    btnRefresh.classList.add('loading'); btnRefresh.disabled = true;
     clearInterval(timerInterval);
     try {
-      const res  = await fetch(`${API_BASE}?action=refresh`);
+      const res = await fetch(`${API_BASE}?action=refresh`);
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      
+      if (!data.success) throw new Error(data.error || 'Refresh failed');
+
       currentEmail = data.emails[0];
-      currentSession = data.sessions[0];
-      
       setEmailDisplay(currentEmail);
       startTimer(600);
+      allMessages = [];
+      selectedMessageId = null;
+      currentMessageDetail = null;
       setInboxWaiting();
-      toast("New email generated");
+      toast('New email generated');
     } catch (e) {
-      toast("Error: " + e.message);
+      toast('Error: ' + e.message);
     } finally {
-      btn.classList.remove("loading"); btn.disabled = false;
+      btnRefresh.classList.remove('loading'); btnRefresh.disabled = false;
     }
   }
 
   async function checkInbox(silent = false) {
-    if (!currentEmail || !currentSession) {
-      if (!silent) toast("Generate an email first");
+    if (!currentEmail) {
+      if (!silent) toast('Generate an email first');
       return;
     }
-    const btn = document.getElementById("btn-check");
-    if (btn) { btn.classList.add("loading"); btn.disabled = true; }
+
+    const btn = document.getElementById('btn-check');
+    if (btn) { btn.classList.add('loading'); btn.disabled = true; }
+
     try {
-      const params = new URLSearchParams({
-        action: "inbox",
-        email: currentEmail,
-        cookies: currentSession.cookies,
-        xsrf: currentSession.xsrf
-      });
-      const res = await fetch(`${API_BASE}?${params}`);
+      const url = `${API_BASE}?action=inbox&email=${encodeURIComponent(currentEmail)}`;
+      const res = await fetch(url);
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      
-      if (data.inbox && data.inbox.length === 0) {
-        if (!silent) setInboxEmpty();
+
+      if (!data.success) throw new Error(data.error || 'Inbox check failed');
+
+      // Update all messages list
+      allMessages = data.all_messages || [];
+
+      if (allMessages.length === 0) {
+        setInboxEmpty();
+        selectedMessageId = null;
+        currentMessageDetail = null;
       } else {
-        renderMail(data);
+        // If we have a selected message, see if it's still in the list, otherwise select first
+        if (selectedMessageId && allMessages.some(m => m.messageID === selectedMessageId)) {
+          // keep same selection
+        } else {
+          selectedMessageId = allMessages[0].messageID;
+        }
+        // Fetch the selected message detail
+        await fetchMessageDetail(selectedMessageId, silent);
       }
     } catch (e) {
-      if (!silent) toast("Error: " + e.message);
+      if (!silent) toast('Error: ' + e.message);
+      setInboxEmpty();
     } finally {
-      if (btn) { btn.classList.remove("loading"); btn.disabled = false; }
+      if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
     }
   }
 
-  function setEmailDisplay(email) {
-    const txt = document.getElementById("email-text");
-    const btn = document.getElementById("copy-email-btn");
-    txt.textContent = email;
-    txt.style.color = "var(--white)";
-    txt.classList.remove("email-placeholder");
-    btn.style.display = "inline-block";
+  async function fetchMessageDetail(messageId, silent = false) {
+    if (!currentEmail || !messageId) return;
+
+    try {
+      const url = `${API_BASE}?action=read&email=${encodeURIComponent(currentEmail)}&messageID=${encodeURIComponent(messageId)}`;
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (!data.success) throw new Error(data.error || 'Failed to load message');
+
+      currentMessageDetail = data;
+      renderMessageDetail(data);
+    } catch (e) {
+      if (!silent) toast('Error loading message: ' + e.message);
+      renderMessageListOnly(); // fallback to just list
+    }
   }
 
+  // UI Rendering
   function setInboxWaiting() {
-    document.getElementById("inbox-content").innerHTML = `
+    inboxContent.innerHTML = `
       <div class="inbox-empty">
         <div class="icon">⏳</div>
         <div>WAITING FOR EMAILS</div>
@@ -604,8 +699,7 @@
   }
 
   function setInboxEmpty() {
-    if (document.querySelector(".mail-wrap")) return;
-    document.getElementById("inbox-content").innerHTML = `
+    inboxContent.innerHTML = `
       <div class="inbox-empty">
         <div class="icon">📭</div>
         <div>NO EMAILS YET</div>
@@ -616,79 +710,187 @@
       </div>`;
   }
 
-  function renderMail(data) {
-    const mail = data.latest || data;
-    const otp = mail.otp || extractOTP(String(mail.html || ""));
+  function renderMessageListOnly() {
+    if (allMessages.length === 0) {
+      setInboxEmpty();
+      return;
+    }
 
-    const otpHtml = otp ? `
-      <div class="otp-wrap" onclick="copyOTP('${otp}')">
-        <div class="otp-label-sm">OTP / Verification Code — tap to copy</div>
-        <div class="otp-number">${otp}</div>
-        <div class="otp-hint">tap to copy</div>
-        <div class="copied-badge" id="otp-copied">COPIED</div>
-      </div>` : "";
+    let listHtml = `<div class="message-list">`;
+    allMessages.forEach(msg => {
+      const selectedClass = msg.messageID === selectedMessageId ? 'selected' : '';
+      listHtml += `
+        <div class="message-item ${selectedClass}" onclick="selectMessage('${msg.messageID}')">
+          <div class="message-sender">${esc(msg.from || 'Unknown')}</div>
+          <div class="message-subject">${esc(msg.subject || '(no subject)')}</div>
+          <div class="message-time">${esc(msg.time || '')}</div>
+        </div>`;
+    });
+    listHtml += `</div>`;
 
-    document.getElementById("inbox-content").innerHTML = `
-      <div class="mail-wrap">
-        <div class="mail-meta">
-          <div class="mail-from">${esc(mail.from || "unknown")}</div>
-          <div class="mail-time">${esc(mail.time || "")}</div>
-        </div>
-        <div class="mail-subject">${esc(mail.subject || "(no subject)")}</div>
-        ${otpHtml}
-        <div class="btn-row full">
-          <button id="btn-check" onclick="checkInbox()"><span>REFRESH INBOX</span></button>
-        </div>
-      </div>`;
+    listHtml += `<div class="btn-row full"><button id="btn-check" onclick="checkInbox()"><span>REFRESH INBOX</span></button></div>`;
+
+    inboxContent.innerHTML = listHtml;
   }
 
-  function extractOTP(text) {
-    const m = String(text).match(/\b\d{4,8}\b/);
-    return m ? m[0] : null;
+  function renderMessageDetail(data) {
+    if (allMessages.length === 0) {
+      setInboxEmpty();
+      return;
+    }
+
+    // Build list + detail view
+    let listHtml = `<div class="message-list" style="max-height:150px;">`;
+    allMessages.forEach(msg => {
+      const selectedClass = msg.messageID === selectedMessageId ? 'selected' : '';
+      listHtml += `
+        <div class="message-item ${selectedClass}" onclick="selectMessage('${msg.messageID}')">
+          <div class="message-sender">${esc(msg.from || 'Unknown')}</div>
+          <div class="message-subject">${esc(msg.subject || '(no subject)')}</div>
+          <div class="message-time">${esc(msg.time || '')}</div>
+        </div>`;
+    });
+    listHtml += `</div>`;
+
+    // Detail of selected message
+    const detail = data;
+    const otp = detail.otp || '';
+    const links = detail.links || [];
+
+    let detailHtml = `<div class="mail-wrap">`;
+    detailHtml += `
+      <div class="mail-meta">
+        <div class="mail-from">${esc(detail.from || 'Unknown')}</div>
+        <div class="mail-time">${esc(detail.time || '')}</div>
+      </div>
+      <div class="mail-subject">${esc(detail.subject || '(no subject)')}</div>`;
+
+    if (otp) {
+      detailHtml += `
+        <div class="otp-wrap" onclick="copyOTP('${otp}')">
+          <div class="otp-label-sm">OTP / Verification Code — tap to copy</div>
+          <div class="otp-number">${otp}</div>
+          <div class="otp-hint">tap to copy</div>
+          <div class="copied-badge" id="otp-copied">COPIED</div>
+        </div>`;
+    }
+
+    if (links.length > 0) {
+      detailHtml += `<div class="links-section"><div class="section-label" style="margin-bottom:8px;">LINKS</div>`;
+      links.forEach(link => {
+        detailHtml += `
+          <div class="link-item">
+            <a href="${link.url}" target="_blank" class="link-url" rel="noopener noreferrer">${esc(link.url)}</a>
+            ${link.text ? `<div style="font-size:10px; color:var(--text-xs); margin-top:4px;">${esc(link.text)}</div>` : ''}
+          </div>`;
+      });
+      detailHtml += `</div>`;
+    }
+
+    // Show a snippet of plain text if no OTP/links? optional
+    if (!otp && links.length === 0 && detail.text) {
+      detailHtml += `<div style="font-size:11px; color:var(--text-dim); padding:12px 0; border-top:1px solid var(--border);">${esc(detail.text.substring(0, 300))}${detail.text.length > 300 ? '…' : ''}</div>`;
+    }
+
+    detailHtml += `<div class="btn-row full" style="margin-top:16px;"><button id="btn-check" onclick="checkInbox()"><span>REFRESH INBOX</span></button></div>`;
+    detailHtml += `</div>`;
+
+    inboxContent.innerHTML = listHtml + detailHtml;
   }
 
-  function esc(s) {
-    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  function updateInboxView() {
+    if (!currentEmail) {
+      setInboxEmpty();
+      return;
+    }
+    if (allMessages.length === 0) {
+      setInboxWaiting();
+    } else {
+      if (selectedMessageId && currentMessageDetail) {
+        renderMessageDetail(currentMessageDetail);
+      } else {
+        renderMessageListOnly();
+      }
+    }
   }
 
+  // Message selection
+  window.selectMessage = async (messageId) => {
+    if (messageId === selectedMessageId) return;
+    selectedMessageId = messageId;
+    await fetchMessageDetail(messageId);
+  };
+
+  // Copy functions
   async function copyEmail() {
     if (!currentEmail) return;
     await navigator.clipboard.writeText(currentEmail).catch(() => {});
-    toast("Email copied");
+    toast('Email copied');
   }
 
   function copyOTP(code) {
     navigator.clipboard.writeText(code).catch(() => {});
-    const badge = document.getElementById("otp-copied");
+    const badge = document.getElementById('otp-copied');
     if (badge) {
-      badge.classList.add("show");
-      setTimeout(() => badge.classList.remove("show"), 1000);
+      badge.classList.add('show');
+      setTimeout(() => badge.classList.remove('show'), 1000);
     }
-    toast("OTP " + code + " copied");
+    toast('OTP ' + code + ' copied');
   }
 
+  // Auto refresh toggle
   function toggleAuto() {
     autoOn = !autoOn;
-    const tog = document.getElementById("auto-toggle");
-    const dot = document.getElementById("auto-dot");
     if (autoOn) {
-      tog.classList.add("on"); dot.classList.add("on");
+      autoToggle.classList.add('on');
+      autoDot.classList.add('on');
       autoInterval = setInterval(() => checkInbox(true), 5000);
-      toast("Auto-refresh ON");
+      toast('Auto-refresh ON');
     } else {
       stopAuto();
-      toast("Auto-refresh OFF");
+      toast('Auto-refresh OFF');
     }
   }
 
   function stopAuto() {
     clearInterval(autoInterval);
     autoOn = false;
-    const tog = document.getElementById("auto-toggle");
-    const dot = document.getElementById("auto-dot");
-    if (tog) tog.classList.remove("on");
-    if (dot) dot.classList.remove("on");
+    autoToggle.classList.remove('on');
+    autoDot.classList.remove('on');
   }
+
+  // Fetch status periodically
+  async function fetchStatus() {
+    try {
+      const res = await fetch(`${API_BASE}?action=status`);
+      const data = await res.json();
+      if (data.success) {
+        systemStatus.textContent = 'ONLINE';
+        sessionInfo.textContent = data.active_sessions + ' ACTIVE SESSION' + (data.active_sessions === 1 ? '' : 'S');
+      } else {
+        systemStatus.textContent = 'DEGRADED';
+      }
+    } catch {
+      systemStatus.textContent = 'OFFLINE';
+    }
+  }
+
+  // Escape helper
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // Initial fetch status
+  fetchStatus();
+  setInterval(fetchStatus, 30000);
+
+  // Expose functions to global for onclick
+  window.generateEmail = generateEmail;
+  window.refreshEmail = refreshEmail;
+  window.checkInbox = checkInbox;
+  window.copyEmail = copyEmail;
+  window.copyOTP = copyOTP;
+  window.toggleAuto = toggleAuto;
 </script>
 </body>
 </html>
