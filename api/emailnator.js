@@ -103,14 +103,13 @@ function authHeaders(cookies, xsrf) {
   };
 }
 
-// ── OTP extraction — handles spaces and dashes ────────────────
+// ── OTP extraction — handles EVERY format (LEGENDARY) ────────
 function extractOTP(text) {
   if (!text) return null;
-  const s = String(text);
-  const spaced = s.match(/\b(\d[\s-]){3,7}\d\b/);
-  if (spaced) return spaced[0].replace(/[\s-]/g, "");
-  const plain = s.match(/\b\d{4,8}\b/);
-  return plain ? plain[0] : null;
+  // Remove all spaces and hyphens, then find the first 4‑8 digit sequence
+  const cleaned = String(text).replace(/[\s-]+/g, "");
+  const match = cleaned.match(/\b\d{4,8}\b/);
+  return match ? match[0] : null;
 }
 
 // ── Link extraction — pure regex, no dependencies ────────────
@@ -343,7 +342,7 @@ function getStatus() {
 }
 
 // ════════════════════════════════════════════════════════════
-//   MAIN HANDLER
+//   MAIN HANDLER — FIXED: decodes URL‑encoded cookies/xsrf
 // ════════════════════════════════════════════════════════════
 module.exports = async function handler(req, res) {
   // CORS
@@ -370,7 +369,14 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  const { action, email, count, messageID, cookies, xsrf } = req.query;
+  const { action, email, count, messageID } = req.query;
+
+  // ════════════════════════════════════════════════════════
+  //  LEGENDARY FIX: decode URL‑encoded cookies and xsrf
+  //  (the frontend sends them encoded for safety)
+  // ════════════════════════════════════════════════════════
+  const cookies = req.query.cookies ? decodeURIComponent(req.query.cookies) : null;
+  const xsrf    = req.query.xsrf    ? decodeURIComponent(req.query.xsrf)    : null;
 
   try {
     if (action === "status")   return res.status(200).json(getStatus());
