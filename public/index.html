@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>MUNAX MAIL · PEAK v3</title>
+  <title>MUNAX MAIL · MX v3</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;700;800&display=swap" rel="stylesheet"/>
   <style>
     :root {
@@ -444,7 +444,7 @@
         <span id="system-status">ONLINE</span>
       </div>
       <span style="color:var(--border2)">·</span>
-      <span id="session-info">—</span>
+      <span id="session-info">STATELESS</span>
     </div>
   </header>
 
@@ -503,17 +503,19 @@
 <script>
   const API_BASE = '/api/emailnator';
 
-  // State
+  // State — now includes session cookies & xsrf
   let currentEmail = null;
+  let sessionCookies = null;
+  let sessionXsrf = null;
   let timerInterval = null;
   let autoInterval = null;
   let secondsLeft = 600;
   let autoOn = false;
-  let allMessages = [];           // list of { messageID, from, subject, time }
-  let selectedMessageId = null;   // currently displayed message ID
-  let currentMessageDetail = null; // full detail of selected message
+  let allMessages = [];
+  let selectedMessageId = null;
+  let currentMessageDetail = null;
 
-  // DOM Elements
+  // DOM elements
   const emailText = document.getElementById('email-text');
   const copyBtn = document.getElementById('copy-email-btn');
   const timerSection = document.getElementById('timer-section');
@@ -557,6 +559,8 @@
         timerEl.textContent = 'EXPIRED';
         toast('Session expired — generate a new email');
         currentEmail = null;
+        sessionCookies = null;
+        sessionXsrf = null;
         stopAuto();
         updateInboxView();
       }
@@ -579,6 +583,16 @@
     btnRefresh.disabled = true;
   }
 
+  // Store session credentials returned by generate/refresh
+  function storeSession(data) {
+    if (data.cookies && data.xsrf) {
+      sessionCookies = data.cookies;
+      sessionXsrf = data.xsrf;
+    } else {
+      console.warn('Session credentials missing in response');
+    }
+  }
+
   // API Calls
   async function generateEmail() {
     btnGenerate.classList.add('loading'); btnGenerate.disabled = true;
@@ -588,6 +602,7 @@
       if (!data.success) throw new Error(data.error || 'Generation failed');
 
       currentEmail = data.emails[0];
+      storeSession(data);                        // ✅ SAVE SESSION
       setEmailDisplay(currentEmail);
       btnRefresh.disabled = false;
       startTimer(data.expires_in_seconds || 600);
@@ -612,6 +627,7 @@
       if (!data.success) throw new Error(data.error || 'Refresh failed');
 
       currentEmail = data.emails[0];
+      storeSession(data);                        // ✅ SAVE NEW SESSION
       setEmailDisplay(currentEmail);
       startTimer(600);
       allMessages = [];
@@ -631,18 +647,26 @@
       if (!silent) toast('Generate an email first');
       return;
     }
+    if (!sessionCookies || !sessionXsrf) {
+      if (!silent) toast('Session missing — generate a new email');
+      return;
+    }
 
     const btn = document.getElementById('btn-check');
     if (btn) { btn.classList.add('loading'); btn.disabled = true; }
 
     try {
-      const url = `${API_BASE}?action=inbox&email=${encodeURIComponent(currentEmail)}`;
-      const res = await fetch(url);
+      const params = new URLSearchParams({
+        action: 'inbox',
+        email: currentEmail,
+        cookies: sessionCookies,
+        xsrf: sessionXsrf
+      });
+      const res = await fetch(`${API_BASE}?${params.toString()}`);
       const data = await res.json();
 
       if (!data.success) throw new Error(data.error || 'Inbox check failed');
 
-      // Update all messages list
       allMessages = data.all_messages || [];
 
       if (allMessages.length === 0) {
@@ -650,13 +674,11 @@
         selectedMessageId = null;
         currentMessageDetail = null;
       } else {
-        // If we have a selected message, see if it's still in the list, otherwise select first
         if (selectedMessageId && allMessages.some(m => m.messageID === selectedMessageId)) {
           // keep same selection
         } else {
           selectedMessageId = allMessages[0].messageID;
         }
-        // Fetch the selected message detail
         await fetchMessageDetail(selectedMessageId, silent);
       }
     } catch (e) {
@@ -669,10 +691,20 @@
 
   async function fetchMessageDetail(messageId, silent = false) {
     if (!currentEmail || !messageId) return;
+    if (!sessionCookies || !sessionXsrf) {
+      if (!silent) toast('Session missing — generate a new email');
+      return;
+    }
 
     try {
-      const url = `${API_BASE}?action=read&email=${encodeURIComponent(currentEmail)}&messageID=${encodeURIComponent(messageId)}`;
-      const res = await fetch(url);
+      const params = new URLSearchParams({
+        action: 'read',
+        email: currentEmail,
+        messageID: messageId,
+        cookies: sessionCookies,
+        xsrf: sessionXsrf
+      });
+      const res = await fetch(`${API_BASE}?${params.toString()}`);
       const data = await res.json();
 
       if (!data.success) throw new Error(data.error || 'Failed to load message');
@@ -681,7 +713,7 @@
       renderMessageDetail(data);
     } catch (e) {
       if (!silent) toast('Error loading message: ' + e.message);
-      renderMessageListOnly(); // fallback to just list
+      renderMessageListOnly();
     }
   }
 
@@ -739,7 +771,6 @@
       return;
     }
 
-    // Build list + detail view
     let listHtml = `<div class="message-list" style="max-height:150px;">`;
     allMessages.forEach(msg => {
       const selectedClass = msg.messageID === selectedMessageId ? 'selected' : '';
@@ -752,7 +783,6 @@
     });
     listHtml += `</div>`;
 
-    // Detail of selected message
     const detail = data;
     const otp = detail.otp || '';
     const links = detail.links || [];
@@ -766,12 +796,13 @@
       <div class="mail-subject">${esc(detail.subject || '(no subject)')}</div>`;
 
     if (otp) {
+      // Use a unique class instead of id
       detailHtml += `
-        <div class="otp-wrap" onclick="copyOTP('${otp}')">
+        <div class="otp-wrap" onclick="copyOTP('${otp}', this)">
           <div class="otp-label-sm">OTP / Verification Code — tap to copy</div>
           <div class="otp-number">${otp}</div>
           <div class="otp-hint">tap to copy</div>
-          <div class="copied-badge" id="otp-copied">COPIED</div>
+          <div class="copied-badge">COPIED</div>
         </div>`;
     }
 
@@ -787,7 +818,6 @@
       detailHtml += `</div>`;
     }
 
-    // Show a snippet of plain text if no OTP/links? optional
     if (!otp && links.length === 0 && detail.text) {
       detailHtml += `<div style="font-size:11px; color:var(--text-dim); padding:12px 0; border-top:1px solid var(--border);">${esc(detail.text.substring(0, 300))}${detail.text.length > 300 ? '…' : ''}</div>`;
     }
@@ -828,9 +858,10 @@
     toast('Email copied');
   }
 
-  function copyOTP(code) {
+  // Updated: accepts the clicked element to show badge relative to it
+  function copyOTP(code, el) {
     navigator.clipboard.writeText(code).catch(() => {});
-    const badge = document.getElementById('otp-copied');
+    const badge = el.querySelector('.copied-badge');
     if (badge) {
       badge.classList.add('show');
       setTimeout(() => badge.classList.remove('show'), 1000);
@@ -859,14 +890,14 @@
     autoDot.classList.remove('on');
   }
 
-  // Fetch status periodically
+  // Status endpoint (no more active_sessions)
   async function fetchStatus() {
     try {
       const res = await fetch(`${API_BASE}?action=status`);
       const data = await res.json();
       if (data.success) {
         systemStatus.textContent = 'ONLINE';
-        sessionInfo.textContent = data.active_sessions + ' ACTIVE SESSION' + (data.active_sessions === 1 ? '' : 'S');
+        sessionInfo.textContent = 'STATELESS';   // Fixed
       } else {
         systemStatus.textContent = 'DEGRADED';
       }
@@ -875,16 +906,15 @@
     }
   }
 
-  // Escape helper
   function esc(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  // Initial fetch status
+  // Initial fetch
   fetchStatus();
   setInterval(fetchStatus, 30000);
 
-  // Expose functions to global for onclick
+  // Expose functions
   window.generateEmail = generateEmail;
   window.refreshEmail = refreshEmail;
   window.checkInbox = checkInbox;
