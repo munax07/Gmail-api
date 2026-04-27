@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>MUNAX MAIL · PEAK v4</title>
+  <title>MUNAX MAIL · PEAK v3</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;700;800&display=swap" rel="stylesheet"/>
   <style>
     :root {
@@ -18,6 +18,7 @@
       --white:    #f0f0f0;
       --tag:      #242424;
       --accent:   #4a9e6b;
+      --warn:     #c0614a;
     }
     * { margin:0; padding:0; box-sizing:border-box; }
     body {
@@ -147,7 +148,7 @@
       color: var(--white);
       letter-spacing: 0.04em;
     }
-    .timer-value.warn { color: #c0614a; }
+    .timer-value.warn { color: var(--warn); }
     .timer-note { font-size: 10px; color: var(--text-xs); letter-spacing: 0.1em; }
     .progress-track {
       height: 2px;
@@ -221,6 +222,17 @@
       letter-spacing: 0.08em;
     }
     .inbox-empty .icon { font-size: 28px; margin-bottom: 10px; opacity: 0.4; }
+    .inbox-error {
+      background: rgba(192,97,74,0.1);
+      border: 1px solid var(--warn);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+      font-size: 10px;
+      color: var(--warn);
+      text-align: center;
+      letter-spacing: 0.08em;
+    }
     .message-list {
       margin-bottom: 20px;
       max-height: 200px;
@@ -495,7 +507,7 @@
 <script>
   const API_BASE = '/api/emailnator';
 
-  // State (persisted to localStorage)
+  // State
   let currentEmail = null;
   let sessionCookies = null;
   let sessionXsrf = null;
@@ -572,6 +584,8 @@
     secondsLeft = secs;
     clearInterval(timerInterval);
     timerSection.style.display = 'block';
+    timerEl.classList.remove('warn');
+    progressFill.classList.remove('warn');
 
     timerInterval = setInterval(() => {
       secondsLeft--;
@@ -609,13 +623,22 @@
   }
 
   function restoreEmailDisplay(email) {
-    // restore UI after page reload
     setEmailDisplay(email);
     btnRefresh.disabled = false;
     startTimer(secondsLeft);
     setInboxWaiting();
-    // trigger a silent inbox check to fetch latest
-    checkInbox(true);
+    checkInbox(true); // silent, but errors will show in inbox
+  }
+
+  // ════════════════════════════════════════════════════════
+  //  NEW: Render inbox error state (for silent failures)
+  // ════════════════════════════════════════════════════════
+  function renderInboxError(msg) {
+    inboxContent.innerHTML = `
+      <div class="inbox-error">⚠ ${msg}</div>
+      <div class="btn-row full">
+        <button id="btn-check" onclick="checkInbox()"><span>RETRY NOW</span></button>
+      </div>`;
   }
 
   // ── API calls ─────────────────────────────────────────────
@@ -676,10 +699,12 @@
   async function checkInbox(silent = false) {
     if (!currentEmail) {
       if (!silent) toast('Generate an email first');
+      else renderInboxError('No email — generate one first');
       return;
     }
     if (!sessionCookies || !sessionXsrf) {
       if (!silent) toast('Session missing — generate a new email');
+      else renderInboxError('Session expired — generate new email');
       return;
     }
 
@@ -713,8 +738,12 @@
         await fetchMessageDetail(selectedMessageId, silent);
       }
     } catch (e) {
-      if (!silent) toast('Error: ' + e.message);
-      setInboxEmpty();
+      console.error('[inbox]', e.message);
+      if (!silent) {
+        toast('Error: ' + e.message);
+      }
+      // Show error in inbox even when silent
+      renderInboxError(e.message);
     } finally {
       if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
     }
@@ -724,6 +753,7 @@
     if (!currentEmail || !messageId) return;
     if (!sessionCookies || !sessionXsrf) {
       if (!silent) toast('Session missing');
+      else renderInboxError('Session expired');
       return;
     }
 
@@ -743,7 +773,9 @@
       currentMessageDetail = data;
       renderMessageDetail(data);
     } catch (e) {
-      if (!silent) toast('Error loading message: ' + e.message);
+      console.error('[read]', e.message);
+      if (!silent) toast('Error: ' + e.message);
+      else renderInboxError(e.message);
       renderMessageListOnly();
     }
   }
