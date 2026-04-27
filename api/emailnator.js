@@ -342,7 +342,7 @@ function getStatus() {
 }
 
 // ════════════════════════════════════════════════════════════
-//   MAIN HANDLER — FIXED: decodes URL‑encoded cookies/xsrf
+//   MAIN HANDLER — ULTRA PEAK: decodes URL‑encoded cookies/xsrf
 // ════════════════════════════════════════════════════════════
 module.exports = async function handler(req, res) {
   // CORS
@@ -372,7 +372,7 @@ module.exports = async function handler(req, res) {
   const { action, email, count, messageID } = req.query;
 
   // ════════════════════════════════════════════════════════
-  //  LEGENDARY FIX: decode URL‑encoded cookies and xsrf
+  //  LEGENDARY FIX: decode URL-encoded cookies and xsrf
   //  (the frontend sends them encoded for safety)
   // ════════════════════════════════════════════════════════
   const cookies = req.query.cookies ? decodeURIComponent(req.query.cookies) : null;
